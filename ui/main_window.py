@@ -1,13 +1,14 @@
 import os
 import subprocess
-from PySide6.QtWidgets import QMessageBox, QFileDialog
+
+from PySide6.QtWidgets import QMessageBox, QFileDialog, QProgressBar, QScrollArea, QWidget, QLabel, QHBoxLayout, QVBoxLayout
 from PySide6.QtGui import QPixmap
 from PIL import Image
 from PIL.ImageQt import ImageQt
-
 from core.pipeline import process_images
 from utils.helpers import resize_with_padding
 from ui.window import AugmentationWindow
+from config.augmentation_config import augmentation_config
 
 TARGET_SIZE = (128, 128)
 
@@ -19,16 +20,48 @@ class MainWindow(AugmentationWindow):
         self.output_dir = None
         self.image_paths = []
 
+
+        self.progress_bar = QProgressBar()
+        self.scroll_area = QScrollArea()
+        self.preview_container = QWidget()
+        self.preview_layout = QHBoxLayout()
+
+
         style = super()._get_button_style()
         self.load_button.setStyleSheet(style)
         self.select_output_button.setStyleSheet(style)
         self.augment_button.setStyleSheet(style)
         self.open_output_button.setStyleSheet(style)
 
+
         self.load_button.clicked.connect(self.load_images)
         self.select_output_button.clicked.connect(self.select_output_folder)
         self.augment_button.clicked.connect(self.apply_selected_augmentation)
         self.open_output_button.clicked.connect(self.open_output_directory)
+
+
+        self.preview_container.setLayout(self.preview_layout)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setWidget(self.preview_container)
+
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid grey;
+                border-radius: 5px;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #4CAF50;
+                width: 10px;
+            }
+        """)
+
+        layout = self.centralWidget().layout()
+        layout.addWidget(QLabel("Результаты аугментации:"))
+        layout.addWidget(self.scroll_area)
+        layout.addWidget(self.progress_bar)
 
     def load_images(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Выберите папку с изображениями")
@@ -82,20 +115,54 @@ class MainWindow(AugmentationWindow):
             return
 
         volume_level = self.level_combo.currentText()
+        total_images = len(self.image_paths)
+        total_aug_per_image = augmentation_config['volume_presets'].get(volume_level, 25)
+
+        self.progress_bar.setMaximum(total_images * total_aug_per_image)
+        self.progress_bar.setValue(0)
+
+
+        for i in reversed(range(self.preview_layout.count())):
+            widget = self.preview_layout.itemAt(i).widget()
+            if widget:
+                widget.deleteLater()
 
         for i, image_path in enumerate(self.image_paths):
-            image = Image.open(image_path).convert("L")
+            try:
+                image = Image.open(image_path).convert("L")
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось открыть файл {image_path}: {e}")
+                continue
+
             resized = resize_with_padding(image, TARGET_SIZE)
             augmented_images = process_images(resized, TARGET_SIZE, volume_level=volume_level)
 
             base_name = os.path.splitext(os.path.basename(image_path))[0]
 
-            for aug_type, augmented_image in augmented_images.items():
-                output_filename = f"{base_name}_{aug_type}.jpg"
+            for idx, aug_image in enumerate(augmented_images):
+                output_filename = f"{base_name}_aug_{idx:03d}.png"
                 output_path = os.path.join(self.output_dir, output_filename)
-                augmented_image.save(output_path)
 
-                if i == 0 and aug_type == 'rotate':
-                    self.show_augmented_preview(augmented_image)
+                try:
+                    aug_image.save(output_path)
+                except Exception as e:
+                    QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить файл {output_path}: {e}")
 
+
+                if i == 0 and idx == 0:
+                    self.show_augmented_preview(aug_image)
+
+
+                thumb = aug_image.resize((64, 64))
+                qimg = ImageQt(thumb)
+                pixmap = QPixmap.fromImage(qimg)
+                label = QLabel()
+                label.setPixmap(pixmap)
+                label.setFixedSize(68, 68)
+                label.setStyleSheet("border: 1px solid #ccc; margin: 2px;")
+                self.preview_layout.addWidget(label)
+
+                self.progress_bar.setValue(self.progress_bar.value() + 1)
+
+        self.progress_bar.setValue(self.progress_bar.maximum())
         QMessageBox.information(self, "Готово", "Аугментация завершена для всех изображений.")

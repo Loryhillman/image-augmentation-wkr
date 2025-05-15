@@ -4,62 +4,69 @@ from augmentor.flip import flip_image
 from augmentor.noise import add_noise
 from augmentor.shift import shift_image
 from augmentor.brightness import change_brightness
-from utils.helpers import resize_with_padding
 from config.augmentation_config import augmentation_config
 
-def apply_augmentation(image, target_size, augmentation_type):
-    """ Применение выбранной аугментации """
+
+def apply_augmentation(image, augmentation_type):
+    """Применяет одну случайную аугментацию к изображению"""
     if augmentation_type == 'rotate' and augmentation_config['rotate']['enabled']:
-        angle = augmentation_config['rotate']['params']['angle']
-        print(f"Применяется угол: {angle} градусов")
-        return rotate_image(image, angle=angle, target_size=target_size)
+        angle = random.uniform(*augmentation_config['rotate']['params']['angle_range'])
+        return rotate_image(image, angle=angle)
 
     elif augmentation_type == 'flip' and augmentation_config['flip']['enabled']:
-        return flip_image(image)
+        mode = random.choice(augmentation_config['flip']['params']['mode_options'])
+        return flip_image(image, mode=mode)
 
     elif augmentation_type == 'noise' and augmentation_config['noise']['enabled']:
         noise_type = random.choice(augmentation_config['noise']['types'])
 
         if noise_type == 'gaussian':
-            params = augmentation_config['noise']['params']['gaussian']
-            return add_noise(image.convert('L'), noise_type='gaussian', std=params['std'])
+            std = random.uniform(*augmentation_config['noise']['params']['gaussian']['std_range'])
+            return add_noise(image.convert('L'), noise_type='gaussian', std=std)
 
         elif noise_type == 'salt_pepper':
-            params = augmentation_config['noise']['params']['salt_pepper']
+            amount = random.uniform(*augmentation_config['noise']['params']['salt_pepper']['amount_range'])
             return add_noise(
                 image.convert('L'),
                 noise_type='salt_pepper',
-                amount=params['amount'],
-                salt_vs_pepper=params['salt_vs_pepper']
+                amount=amount,
+                salt_vs_pepper=augmentation_config['noise']['params']['salt_pepper']['salt_vs_pepper']
             )
 
-
     elif augmentation_type == 'shift' and augmentation_config['shift']['enabled']:
-        return shift_image(image, max_shift=augmentation_config['shift']['params']['max_shift'])
+        max_shift = random.uniform(*augmentation_config['shift']['params']['max_shift_range'])
+        return shift_image(image, max_shift=max_shift)
 
     elif augmentation_type == 'brightness' and augmentation_config['brightness']['enabled']:
-        factor = random.uniform(augmentation_config['brightness']['params']['factor'], augmentation_config['brightness']['params']['factor'])  # Исправил, на случай диапазона
+        factor = random.uniform(*augmentation_config['brightness']['params']['factor_range'])
         return change_brightness(image, factor=factor)
 
     return image
 
 
 def process_images(image, target_size, volume_level='low'):
-    """ Обработка изображений с аугментациями в зависимости от объёма """
-    image_resized = resize_with_padding(image, target_size)
+    """
+    Генерирует N аугментированных версий изображения
+    на основе случайных комбинаций доступных аугментаций.
+    """
 
-    results = {}
+    available = [a for a in augmentation_config['available_augmentations']
+                 if augmentation_config[a]['enabled']]
 
-    available_augmentations = ['rotate', 'flip', 'noise', 'shift', 'brightness']
+    num_images = augmentation_config['volume_presets'].get(volume_level, 25)
 
-    if volume_level == 'low':
-        augmentations_to_apply = random.sample(available_augmentations, 2)
-    elif volume_level == 'medium':
-        augmentations_to_apply = random.sample(available_augmentations, 3)
-        augmentations_to_apply = available_augmentations
+    results = []
 
-    for augmentation in augmentations_to_apply:
-        augmented_image = apply_augmentation(image_resized, target_size, augmentation)
-        results[augmentation] = augmented_image
+    for _ in range(num_images):
+
+        num_augs = random.randint(1, 3)
+        augs = random.choices(available, k=num_augs)
+
+        img = image.copy().resize(target_size)
+
+        for aug in augs:
+            img = apply_augmentation(img, aug)
+
+        results.append(img)
 
     return results

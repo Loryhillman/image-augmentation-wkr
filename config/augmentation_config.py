@@ -1,22 +1,23 @@
 augmentation_config = {
-    'order': ['noise', 'rotate', 'flip', 'shift', 'brightness'],
+    # Все доступные типы аугментаций (включаются/выключаются через enabled)
+    'available_augmentations': [
+        'noise',
+        'rotate',
+        'flip',
+        'shift',
+        'brightness'
+    ],
 
-    'volume_presets': {
-        'low': ['flip', 'brightness'],
-        'medium': ['flip', 'brightness', 'rotate', 'noise'],
-        'high': ['flip', 'brightness', 'rotate', 'noise', 'shift']
-    },
-
+    # Параметры каждой аугментации
     'noise': {
         'enabled': True,
         'types': ['gaussian', 'salt_pepper'],
         'params': {
             'gaussian': {
-                'mean': 0,
-                'std': 10
+                'std_range': (1, 25)
             },
             'salt_pepper': {
-                'amount': 0.05,
+                'amount_range': (0.01, 0.1),
                 'salt_vs_pepper': 0.5
             }
         }
@@ -25,28 +26,35 @@ augmentation_config = {
     'rotate': {
         'enabled': True,
         'params': {
-            'angle': 15
+            'angle_range': (-45, 45)
         }
     },
 
     'flip': {
         'enabled': True,
         'params': {
-            'mode': 'horizontal'
+            'mode_options': ['horizontal', 'vertical']
         }
     },
 
     'shift': {
         'enabled': True,
         'params': {
-            'max_shift': 0.1
+            'max_shift_range': (0.05, 0.2)
         }
     },
 
     'brightness': {
         'enabled': True,
         'params': {
-            'factor': 1.5
+            'factor_range': (0.7, 1.5)
         }
+    },
+
+    # Теперь уровни влияют на количество выходных изображений
+    'volume_presets': {
+        'low': 25,
+        'medium': 50,
+        'high': 100
     }
 }

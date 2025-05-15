@@ -20,3 +20,6 @@ data/output/
 # OS
 .DS_Store
 Thumbs.db
+
+# vkr
+vkr-class/

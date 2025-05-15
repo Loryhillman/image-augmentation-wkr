@@ -3,8 +3,9 @@ from PIL import Image
 def flip_image(image, mode='horizontal'):
     """
     Отражает изображение по горизонтали или вертикали.
+    
     :param image: PIL.Image
-    :param mode: 'horizontal' или 'vertical'
+    :param mode: 'horizontal' или 'vertical' (или случайный выбор)
     :return: PIL.Image
     """
     if mode == 'horizontal':

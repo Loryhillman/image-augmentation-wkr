@@ -12,7 +12,7 @@ TARGET_SIZE = (128, 128)
 VOLUME_LEVEL = 'high'
 
 def main():
-    # Проверка существования папки для вывода
+
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
     
@@ -30,17 +30,14 @@ def main():
             print(f"Пропущено: {filename} — не полутоновое изображение.")
             continue
 
-        image_resized = resize_with_padding(image, TARGET_SIZE)
-
         base_name, _ = os.path.splitext(filename)
 
-        augmented_images = process_images(image_resized, TARGET_SIZE, volume_level=VOLUME_LEVEL)
+        augmented_images = process_images(image, TARGET_SIZE, volume_level=VOLUME_LEVEL)
 
-        for aug_type, augmented_image in augmented_images.items():
-            output_filename = f"{base_name}_{aug_type}.jpg"
-            output_path = os.path.join(OUTPUT_DIR, output_filename)
-            save_image(augmented_image, output_path)
-            print(f"Аугментация '{aug_type}' применена → {output_filename}")
-
+    for i, aug_img in enumerate(augmented_images):
+        output_filename = f"{base_name}_aug_{i:03d}.png"
+        output_path = os.path.join(OUTPUT_DIR, output_filename)
+        save_image(aug_img, output_path)
+        print(f"Аугментированное изображение {i+1} сохранено → {output_filename}")
 if __name__ == "__main__":
     main()

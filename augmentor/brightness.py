@@ -2,7 +2,7 @@ from PIL import ImageEnhance
 
 def change_brightness(image, factor=1.0):
     """
-    Изменение яркости изображения.
+    Изменяет яркость изображения.
 
     :param image: изображение для изменения яркости
     :param factor: коэффициент яркости (1.0 — без изменений, <1 — темнее, >1 — ярче)
